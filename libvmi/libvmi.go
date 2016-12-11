@@ -74,7 +74,7 @@ func (i *LibVMI) Read_addr_ksym(symbol string)(uint64,int){
   return uint64(C.convert_addr_t(value)),status
 }
 
-func (i *LibVMI) Translate_ksym2(symbol string)(uint64, error){
+func (i *LibVMI) Translate_ksym2v(symbol string)(uint64, error){
   address := C.vmi_translate_ksym2v(i.vmi,C.CString(symbol))
   if address == 0{
     return 0, errors.New("vmi kernel symbol to virtual address translation error")
@@ -82,9 +82,13 @@ func (i *LibVMI) Translate_ksym2(symbol string)(uint64, error){
   return uint64(address),nil
 }
 
-func (i *LibVMI) Read_str_va(addr uint64,pid int32)(string,error){
+/*
+* Reads a null terminated string from memory, starting at the given virtual address. T
+* The returned value is a Go string and does not need to be freed by the caller.
+*/
+func (i *LibVMI) Read_str_va(vaddr uint64,pid int32)(string,error){
   var value string
-  cstring :=C.vmi_read_str_va(i.vmi,C.get_addr_t(C.ulonglong(addr)),C.get_vmi_pid_t(C.int(pid)))
+  cstring :=C.vmi_read_str_va(i.vmi,C.get_addr_t(C.ulonglong(vaddr)),C.get_vmi_pid_t(C.int(pid)))
   value = C.GoString(cstring)
 
   if cstring == nil{
@@ -97,10 +101,41 @@ func (i *LibVMI) Read_str_va(addr uint64,pid int32)(string,error){
 
 }
 
-func (i *LibVMI) Read_32_va(addr uint64, pid int32)(uint32, int){
+/*
+* Reads 8 bits from memory, given a virtual address.
+*/
+func (i *LibVMI) Read_8_va(vaddr uint64, pid int32)(uint8, int){
+  var value C.uint8_t
+  var status int
+  if C.vmi_read_8_va(i.vmi,C.get_addr_t(C.ulonglong(vaddr)),C.get_vmi_pid_t(C.int(pid)),&value) == C.VMI_FAILURE{
+    status = VMI_FAILURE
+  }else{
+    status = VMI_SUCCESS
+  }
+  return uint8(value),status
+}
+
+/*
+* Reads 16 bits from memory, given a virtual address.
+*/
+func (i *LibVMI) Read_16_va(vaddr uint64, pid int32)(uint16, int){
+  var value C.uint16_t
+  var status int
+  if C.vmi_read_16_va(i.vmi,C.get_addr_t(C.ulonglong(vaddr)),C.get_vmi_pid_t(C.int(pid)),&value) == C.VMI_FAILURE{
+    status = VMI_FAILURE
+  }else{
+    status = VMI_SUCCESS
+  }
+  return uint16(value),status
+}
+
+/*
+* Reads 32 bits from memory, given a virtual address.
+*/
+func (i *LibVMI) Read_32_va(vaddr uint64, pid int32)(uint32, int){
   var value C.uint32_t
   var status int
-  if C.vmi_read_32_va(i.vmi,C.get_addr_t(C.ulonglong(addr)),C.get_vmi_pid_t(C.int(pid)),&value) == C.VMI_FAILURE{
+  if C.vmi_read_32_va(i.vmi,C.get_addr_t(C.ulonglong(vaddr)),C.get_vmi_pid_t(C.int(pid)),&value) == C.VMI_FAILURE{
     status = VMI_FAILURE
   }else{
     status = VMI_SUCCESS
@@ -108,10 +143,28 @@ func (i *LibVMI) Read_32_va(addr uint64, pid int32)(uint32, int){
   return uint32(value),status
 }
 
-func (i *LibVMI) Read_addr_va(addr uint64, pid int32)(uint64,int){
+/*
+* Reads 64 bits from memory, given a virtual address.
+*/
+func (i *LibVMI) Read_64_va(vaddr uint64, pid int32)(uint64, int){
+  var value C.uint64_t
+  var status int
+  if C.vmi_read_64_va(i.vmi,C.get_addr_t(C.ulonglong(vaddr)),C.get_vmi_pid_t(C.int(pid)),&value) == C.VMI_FAILURE{
+    status = VMI_FAILURE
+  }else{
+    status = VMI_SUCCESS
+  }
+  return uint64(value),status
+}
+
+
+/*
+* Reads an address from memory, given a virtual address. The number of bytes read is 8 for 64-bit systems and 4 for 32-bit systems.
+*/
+func (i *LibVMI) Read_addr_va(vaddr uint64, pid int32)(uint64,int){
   var status int
   value := C.get_addr_t(0)
-  if C.vmi_read_addr_va(i.vmi,C.get_addr_t(C.ulonglong(addr)),C.get_vmi_pid_t(C.int(pid)),&value) == C.VMI_FAILURE{
+  if C.vmi_read_addr_va(i.vmi,C.get_addr_t(C.ulonglong(vaddr)),C.get_vmi_pid_t(C.int(pid)),&value) == C.VMI_FAILURE{
     status = VMI_FAILURE
   }else{
     status = VMI_SUCCESS
@@ -120,10 +173,10 @@ func (i *LibVMI) Read_addr_va(addr uint64, pid int32)(uint64,int){
   return uint64(C.convert_addr_t(value)), status
 }
 
-//TODO: fix uintptr
-func (i *LibVMI) Read_va(addr uint64, pid int32, buf uintptr, count uint){
+//TODO: fix uintptr buffer, does it work?
+func (i *LibVMI) Read_va(vaddr uint64, pid int32, buf uintptr, count uint){
 
-  C.vmi_read_va(i.vmi,C.get_addr_t(C.ulonglong(addr)),C.get_vmi_pid_t(C.int(pid)),buf,C.get_size_t(C.uint(count)))
+  C.vmi_read_va(i.vmi,C.get_addr_t(C.ulonglong(vaddr)),C.get_vmi_pid_t(C.int(pid)),buf,C.get_size_t(C.uint(count)))
 
 }
 
@@ -183,6 +236,43 @@ func (i *LibVMI) Get_ostype()int{
 
 }
 
+//get a new libvmi instance for a given vm
+func Init(flags C.uint32_t,vmName string)(LibVMI, int){
+  fmt.Println("Creating new vmi instance for "+vmName)
+
+    var vmi C.vmi_instance_t
+    var status int
+
+    if (C.vmi_init(&vmi, flags,C.CString(vmName)) == C.VMI_FAILURE) {
+         fmt.Println("Failed to init LibVMI library")
+         status = VMI_FAILURE
+     }else{
+       fmt.Println("Libvmi initialized successfully\n")
+         status = VMI_SUCCESS
+     }
+
+    obj := LibVMI{vmi: vmi}
+
+    return obj,status
+}
+
+func Init_custom(flags C.uint32_t, buf uintptr)(LibVMI, int){
+    var vmi C.vmi_instance_t
+    var status int
+
+    if (C.vmi_init_custom(&vmi,flags,buf) == C.VMI_FAILURE) {
+         fmt.Println("Failed to init LibVMI library")
+         status = VMI_FAILURE
+     }else{
+       fmt.Println("Libvmi initialized successfully\n")
+         status = VMI_SUCCESS
+     }
+
+    obj := LibVMI{vmi: vmi}
+
+    return obj,status
+}
+
 func Init_complete(config string)(LibVMI, int){
     var vmi C.vmi_instance_t
     var status int
@@ -200,14 +290,11 @@ func Init_complete(config string)(LibVMI, int){
     return obj,status
 }
 
-//get a new libvmi instance for a given vm
-func Init(vmName string, flags C.uint32_t)(LibVMI, int){
-  fmt.Println("Creating new vmi instance for "+vmName)
-
+func Init_complete_custom(flags C.uint32_t, buf uintptr)(LibVMI, int){
     var vmi C.vmi_instance_t
     var status int
 
-    if (C.vmi_init(&vmi, flags,C.CString(vmName)) == C.VMI_FAILURE) {
+    if (C.vmi_init_complete_custom(&vmi,flags,buf) == C.VMI_FAILURE) {
          fmt.Println("Failed to init LibVMI library")
          status = VMI_FAILURE
      }else{

@@ -6,7 +6,7 @@ import (
 )
 
 func processlist(vmName string){
-  vmi,status := libvmi.Init(vmName, libvmi.VMI_AUTO | libvmi.VMI_INIT_COMPLETE)
+  vmi,status := libvmi.Init(libvmi.VMI_AUTO | libvmi.VMI_INIT_COMPLETE, vmName)
   var tasks_offset, pid_offset, list_head, next_list_entry, current_process, name_offset uint64
   var pid uint32
   var err error
@@ -62,7 +62,7 @@ func processlist(vmName string){
 
   /*get the head of the list */
   if libvmi.VMI_OS_LINUX == vmi.Get_ostype(){
-    list_head,err = vmi.Translate_ksym2("init_task")
+    list_head,err = vmi.Translate_ksym2v("init_task")
     list_head = list_head + tasks_offset
     if err != nil {
       fmt.Println(err)
@@ -106,9 +106,9 @@ func processlist(vmName string){
         return
       }
 
-      fmt.Print("[",pid)
-      fmt.Print("]  --",procname)
-      fmt.Printf(" -- struct addr : %x\n",current_process)
+      fmt.Print("[ ",pid)
+      fmt.Print("]  ",procname)
+      fmt.Printf(" -- struct addr:%x\n",current_process)
 
       next_list_entry, status = vmi.Read_addr_va(next_list_entry,0)
 
