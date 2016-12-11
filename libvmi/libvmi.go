@@ -14,6 +14,13 @@ package libvmi
 //  return address;
 //
 //}
+//unsigned long long convert_addr_t(addr_t addr)
+//{
+//  unsigned long long val;
+//  val = addr;
+//  return val;
+//
+//}
 //
 //vmi_pid_t
 //get_vmi_pid_t(int val)
@@ -33,6 +40,7 @@ import "C"
 import (
   "fmt"
   "unsafe"
+  "errors"
 )
 
 const (
@@ -54,6 +62,71 @@ type LibVMI struct{
   initialized bool
 }
 
+func (i *LibVMI) Read_addr_ksym(symbol string)(uint64,int){
+  var status int
+  value := C.get_addr_t(0)
+  if C.vmi_read_addr_ksym(i.vmi,C.CString(symbol),&value) == C.VMI_FAILURE{
+    status = VMI_FAILURE
+  }else{
+    status = VMI_SUCCESS
+  }
+
+  return uint64(C.convert_addr_t(value)),status
+}
+
+func (i *LibVMI) Translate_ksym2(symbol string)(uint64, error){
+  address := C.vmi_translate_ksym2v(i.vmi,C.CString(symbol))
+  if address == 0{
+    return 0, errors.New("vmi kernel symbol to virtual address translation error")
+  }
+  return uint64(address),nil
+}
+
+func (i *LibVMI) Read_str_va(addr uint64,pid int32)(string,error){
+  var value string
+  cstring :=C.vmi_read_str_va(i.vmi,C.get_addr_t(C.ulonglong(addr)),C.get_vmi_pid_t(C.int(pid)))
+  value = C.GoString(cstring)
+
+  if cstring == nil{
+    return "", errors.New("vmi kernel symbol to virtual address translation error")
+  }else{
+      defer C.free(unsafe.Pointer(cstring))
+  }
+  value = C.GoString(cstring)
+  return value, nil
+
+}
+
+func (i *LibVMI) Read_32_va(addr uint64, pid int32)(uint32, int){
+  var value C.uint32_t
+  var status int
+  if C.vmi_read_32_va(i.vmi,C.get_addr_t(C.ulonglong(addr)),C.get_vmi_pid_t(C.int(pid)),&value) == C.VMI_FAILURE{
+    status = VMI_FAILURE
+  }else{
+    status = VMI_SUCCESS
+  }
+  return uint32(value),status
+}
+
+func (i *LibVMI) Read_addr_va(addr uint64, pid int32)(uint64,int){
+  var status int
+  value := C.get_addr_t(0)
+  if C.vmi_read_addr_va(i.vmi,C.get_addr_t(C.ulonglong(addr)),C.get_vmi_pid_t(C.int(pid)),&value) == C.VMI_FAILURE{
+    status = VMI_FAILURE
+  }else{
+    status = VMI_SUCCESS
+  }
+
+  return uint64(C.convert_addr_t(value)), status
+}
+
+//TODO: fix uintptr
+func (i *LibVMI) Read_va(addr uint64, pid int32, buf uintptr, count uint){
+
+  C.vmi_read_va(i.vmi,C.get_addr_t(C.ulonglong(addr)),C.get_vmi_pid_t(C.int(pid)),buf,C.get_size_t(C.uint(count)))
+
+}
+
 
 func (i *LibVMI) Get_vmid()uint64{
   id := C.vmi_get_vmid(i.vmi)
@@ -69,6 +142,16 @@ func (i *LibVMI) Get_name()string{
   name := C.vmi_get_name(i.vmi)
   defer C.free(unsafe.Pointer(name))
   return C.GoString(name)
+}
+
+func (i *LibVMI) Resume_vm()int{
+  var status int
+  if C.vmi_resume_vm(i.vmi) == C.VMI_FAILURE{
+    status = VMI_FAILURE
+  }else{
+    status = VMI_SUCCESS
+  }
+  return status
 }
 
 func (i *LibVMI) Pause_vm()int{
@@ -97,13 +180,6 @@ func (i *LibVMI) Get_ostype()int{
  }else{
    return VMI_OS_UNKNOWN
  }
-
-}
-
-//TODO: fix uintptr
-func (i *LibVMI) Read_va(addr uint64, pid int32, buf uintptr, count uint){
-
-  C.vmi_read_va(i.vmi,C.get_addr_t(C.ulonglong(addr)),C.get_vmi_pid_t(C.int(pid)),buf,C.get_size_t(C.uint(count)))
 
 }
 
