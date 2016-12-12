@@ -7,6 +7,7 @@ package libvmi
 // #include <inttypes.h>
 // #include <stdlib.h>
 //
+//
 //addr_t
 //get_addr_t(unsigned long long val)
 //{
@@ -14,6 +15,7 @@ package libvmi
 //  return address;
 //
 //}
+//
 //unsigned long long convert_addr_t(addr_t addr)
 //{
 //  unsigned long long val;
@@ -21,6 +23,22 @@ package libvmi
 //  return val;
 //
 //}
+//
+//reg_t
+//get_reg_t(unsigned long long val)
+//{
+//  reg_t reg = val;
+//  return reg;
+//}
+//
+//unsigned long long convert_reg_t(reg_t reg)
+//{
+//  unsigned long long val;
+//  val = reg;
+//  return val;
+//
+//}
+//
 //
 //vmi_pid_t
 //get_vmi_pid_t(int val)
@@ -50,6 +68,7 @@ const (
   VMI_FAILURE = C.VMI_FAILURE
   VMI_SUCCESS = C.VMI_SUCCESS
   VMI_FILE = C.VMI_FILE
+  VMI_XEN = C.VMI_XEN
   VMI_OS_UNKNOWN = 0
   VMI_OS_LINUX = 1
   VMI_OS_WINDOWS = 2
