@@ -1,58 +1,13 @@
 package libvmi
 
 // #cgo LDFLAGS: -lvmi
-// #include <libvmi/libvmi.h>
 // #include <sys/mman.h>
 // #include <errno.h>
 // #include <inttypes.h>
 // #include <stdlib.h>
-//
-//
-//addr_t
-//get_addr_t(unsigned long long val)
-//{
-//  addr_t address = val;
-//  return address;
-//
-//}
-//
-//unsigned long long convert_addr_t(addr_t addr)
-//{
-//  unsigned long long val;
-//  val = addr;
-//  return val;
-//
-//}
-//
-//reg_t
-//get_reg_t(unsigned long long val)
-//{
-//  reg_t reg = val;
-//  return reg;
-//}
-//
-//unsigned long long convert_reg_t(reg_t reg)
-//{
-//  unsigned long long val;
-//  val = reg;
-//  return val;
-//
-//}
-//
-//
-//vmi_pid_t
-//get_vmi_pid_t(int val)
-//{
-//  vmi_pid_t pid = val;
-//  return pid;
-//}
-//size_t
-//get_size_t(unsigned int val)
-//{
-//  size_t size = val;
-//  return size;
-//}
-//
+// #include <libvmi/libvmi.h>
+// #include <libvmi/events.h>
+// #include "go_libvmi.h"
 import "C"
 
 import (
@@ -65,6 +20,7 @@ const (
   VMI_INIT_COMPLETE = C.VMI_INIT_COMPLETE
   VMI_INIT_PARTIAL = C.VMI_INIT_PARTIAL
   VMI_AUTO = C.VMI_AUTO
+  VMI_EVENTS_VERSION = 0x00000002
   VMI_FAILURE = C.VMI_FAILURE
   VMI_SUCCESS = C.VMI_SUCCESS
   VMI_FILE = C.VMI_FILE
@@ -75,10 +31,96 @@ const (
 
 )
 
+type LibVMI_Event struct{
+  version uint32
+  slat_id uint16
+  data uintptr
+}
 
 type LibVMI struct{
   vmi C.vmi_instance_t
   initialized bool
+}
+
+func SETUP_INTERRUPT_EVENT(event LibVMI_Event,reinject uint){
+  var interrupt_event C.vmi_event_t
+  interrupt_event.version = VMI_EVENTS_VERSION
+}
+
+//get a new libvmi instance for a given vm
+func Init(flags C.uint32_t,vmName string)(LibVMI, int){
+  fmt.Println("Creating new vmi instance for "+vmName)
+
+    var vmi C.vmi_instance_t
+    var status int
+
+    if (C.vmi_init(&vmi, flags,C.CString(vmName)) == C.VMI_FAILURE) {
+         fmt.Println("Failed to init LibVMI library")
+         status = VMI_FAILURE
+     }else{
+       fmt.Println("Libvmi initialized successfully\n")
+         status = VMI_SUCCESS
+     }
+
+    obj := LibVMI{vmi: vmi}
+
+    return obj,status
+}
+
+func Init_custom(flags C.uint32_t, buf uintptr)(LibVMI, int){
+    var vmi C.vmi_instance_t
+    var status int
+
+    if (C.vmi_init_custom(&vmi,flags,buf) == C.VMI_FAILURE) {
+         fmt.Println("Failed to init LibVMI library")
+         status = VMI_FAILURE
+     }else{
+       fmt.Println("Libvmi initialized successfully\n")
+         status = VMI_SUCCESS
+     }
+
+    obj := LibVMI{vmi: vmi}
+
+    return obj,status
+}
+
+func Init_complete(config string)(LibVMI, int){
+    var vmi C.vmi_instance_t
+    var status int
+
+    if (C.vmi_init_complete(&vmi,C.CString(config)) == C.VMI_FAILURE) {
+         fmt.Println("Failed to init LibVMI library")
+         status = VMI_FAILURE
+     }else{
+       fmt.Println("Libvmi initialized successfully\n")
+         status = VMI_SUCCESS
+     }
+
+    obj := LibVMI{vmi: vmi}
+
+    return obj,status
+}
+
+func Init_complete_custom(flags C.uint32_t, buf uintptr)(LibVMI, int){
+    var vmi C.vmi_instance_t
+    var status int
+
+    if (C.vmi_init_complete_custom(&vmi,flags,buf) == C.VMI_FAILURE) {
+         fmt.Println("Failed to init LibVMI library")
+         status = VMI_FAILURE
+     }else{
+       fmt.Println("Libvmi initialized successfully\n")
+         status = VMI_SUCCESS
+     }
+
+    obj := LibVMI{vmi: vmi}
+
+    return obj,status
+}
+
+//Destroy this libvmi instance
+func(i *LibVMI) Destroy(){
+  C.vmi_destroy(i.vmi)
 }
 
 func (i *LibVMI) Read_addr_ksym(symbol string)(uint64,int){
@@ -253,80 +295,4 @@ func (i *LibVMI) Get_ostype()int{
    return VMI_OS_UNKNOWN
  }
 
-}
-
-//get a new libvmi instance for a given vm
-func Init(flags C.uint32_t,vmName string)(LibVMI, int){
-  fmt.Println("Creating new vmi instance for "+vmName)
-
-    var vmi C.vmi_instance_t
-    var status int
-
-    if (C.vmi_init(&vmi, flags,C.CString(vmName)) == C.VMI_FAILURE) {
-         fmt.Println("Failed to init LibVMI library")
-         status = VMI_FAILURE
-     }else{
-       fmt.Println("Libvmi initialized successfully\n")
-         status = VMI_SUCCESS
-     }
-
-    obj := LibVMI{vmi: vmi}
-
-    return obj,status
-}
-
-func Init_custom(flags C.uint32_t, buf uintptr)(LibVMI, int){
-    var vmi C.vmi_instance_t
-    var status int
-
-    if (C.vmi_init_custom(&vmi,flags,buf) == C.VMI_FAILURE) {
-         fmt.Println("Failed to init LibVMI library")
-         status = VMI_FAILURE
-     }else{
-       fmt.Println("Libvmi initialized successfully\n")
-         status = VMI_SUCCESS
-     }
-
-    obj := LibVMI{vmi: vmi}
-
-    return obj,status
-}
-
-func Init_complete(config string)(LibVMI, int){
-    var vmi C.vmi_instance_t
-    var status int
-
-    if (C.vmi_init_complete(&vmi,C.CString(config)) == C.VMI_FAILURE) {
-         fmt.Println("Failed to init LibVMI library")
-         status = VMI_FAILURE
-     }else{
-       fmt.Println("Libvmi initialized successfully\n")
-         status = VMI_SUCCESS
-     }
-
-    obj := LibVMI{vmi: vmi}
-
-    return obj,status
-}
-
-func Init_complete_custom(flags C.uint32_t, buf uintptr)(LibVMI, int){
-    var vmi C.vmi_instance_t
-    var status int
-
-    if (C.vmi_init_complete_custom(&vmi,flags,buf) == C.VMI_FAILURE) {
-         fmt.Println("Failed to init LibVMI library")
-         status = VMI_FAILURE
-     }else{
-       fmt.Println("Libvmi initialized successfully\n")
-         status = VMI_SUCCESS
-     }
-
-    obj := LibVMI{vmi: vmi}
-
-    return obj,status
-}
-
-//Destroy this libvmi instance
-func(i *LibVMI) Destroy(){
-  C.vmi_destroy(i.vmi)
 }
