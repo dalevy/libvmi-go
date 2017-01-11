@@ -8,6 +8,11 @@ package libvmi
 // #include <libvmi/libvmi.h>
 // #include <libvmi/events.h>
 // #include "go_libvmi.h"
+//
+// void SETUP_REG_EVENT_WRAPPER(vmi_event_t *event, unsigned long long register, unsigned char access, unsigned long long equal)
+// {
+//    SETUP_REG_EVENT(event,register,access,equal);
+// }
 import "C"
 
 import (
@@ -30,6 +35,14 @@ const (
   VMI_OS_WINDOWS = 2
 
 )
+
+const (
+  CR3 = C.CR3
+)
+
+type Reg_t struct{
+  val uint64
+}
 
 type LibVMI_Event struct{
   version uint32

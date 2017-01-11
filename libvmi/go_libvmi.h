@@ -1,5 +1,5 @@
-#ifndef GO_LIBVIRT_H
-#define GO_LIBVIRT_H
+#ifndef GO_LIBVMI_H
+#define GO_LIBVMI_H
 
 addr_t
 get_addr_t(unsigned long long val)
@@ -42,4 +42,4 @@ get_size_t(unsigned int val)
   return size;
 }
 
-#endif /* GO_LIBVIRT_H */
+#endif /* GO_LIBVMI_H */

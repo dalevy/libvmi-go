@@ -6,7 +6,7 @@ import (
   "os"
 )
 
-var cr3 uint64
+var mm_enabled bool
 
 func main(){
 
@@ -16,11 +16,6 @@ func main(){
   }
 
   vmName := os.Args[1]
-
-  var lstar, phys_lstar, cstar, phys_cstar, sysenter_ip, phys_sysenter_ip uint64
-  var ia32_sysenter_target, phys_ia32_sysenter_target, vsyscall, phys_vsyscall uint64
-
-  var pd uint32
 
   vmi,status := libvmi.Init(libvmi.VMI_XEN | libvmi.VMI_AUTO | libvmi.VMI_INIT_COMPLETE, vmName)
 
@@ -32,7 +27,7 @@ func main(){
     return
   }
 
-  //Get the cr3 for this process
+  
 
 
 }
