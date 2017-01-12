@@ -6,7 +6,9 @@ import (
   "os"
 )
 
-var mm_enabled bool
+func single_step_callback(vmi libvmi.Libvmi, event libvmi.Libvmi_Event){
+
+}
 
 func main(){
 
@@ -27,7 +29,16 @@ func main(){
     return
   }
 
-  
+  var single_event libvmi.Libvmi_Event
+  single_event.Callback = single_step_callback
+  single_event.Version = libvmi.VMI_EVENTS_VERSION
+  single_event.Type = libvmi.VMI_EVENT_SINGLESTEP
 
+  libvmi.Vmi_register_event(vmi,single_event)
+
+  for {
+    fmt.Println("Waiting for events...")
+    libvmi.Vmi_events_listen(vmi,500)
+  }
 
 }
