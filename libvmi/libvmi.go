@@ -19,6 +19,7 @@ import (
 const (
   VMI_INIT_COMPLETE = C.VMI_INIT_COMPLETE
   VMI_INIT_PARTIAL = C.VMI_INIT_PARTIAL
+  VMI_INIT_EVENTS = C.VMI_INIT_EVENTS
   VMI_AUTO = C.VMI_AUTO
   VMI_FAILURE = C.VMI_FAILURE
   VMI_SUCCESS = C.VMI_SUCCESS
@@ -33,6 +34,10 @@ const (
 type Libvmi struct{
   vmi C.vmi_instance_t
   initialized bool
+}
+
+func (i *Libvmi) IsInitialized()bool{
+  return i.initialized
 }
 
 //get a new Libvmi instance for a given vm

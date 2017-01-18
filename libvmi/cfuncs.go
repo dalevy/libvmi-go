@@ -10,15 +10,16 @@ package libvmi
 #include <libvmi/events.h>
 
 //generic event handler that will be passed to C to call go
-extern void go_libvmi_event_callback_proxy(vmi_instance_t vmi, vmi_event_t *event);
+extern void go_libvmi_event_callback_proxy(vmi_instance_t vmi, vmi_event_t *event, uint64_t id);
+extern  event_response_t generic_event_handler(vmi_instance_t vmi, vmi_event_t *event);
 
 */
 import "C"
 
 //export go_libvmi_event_callback_proxy
-func go_libvmi_event_callback_proxy(vmi C.vmi_instance_t, event *C.vmi_event_t){
+func go_libvmi_event_callback_proxy(vmi C.vmi_instance_t,event *C.vmi_event_t, id C.uint64_t){
   var event_wrapper Libvmi_Event
-  event_wrapper = lookup(event)
+  event_wrapper = lookup(id)
 
   //set the event
   event_wrapper.setEvent(event)

@@ -16,27 +16,34 @@ import (
 #include <libvmi/events.h>
 
 //the function handler called by all events that will call the go proxy to do a go function callback lookup
-void
-generic_event_handler(vmi_instance_t vmi, vmi_event_t *event)
+ event_response_t generic_event_handler(vmi_instance_t vmi, vmi_event_t *event)
 {
-  go_libvmi_event_callback_proxy(vmi,event);
+  printf("Callback!\n");
+  //go_libvmi_event_callback_proxy(vmi,event);
 }
 
-//wrap the memset event creation because go has problems with fields in  structs
-vmi_event_t
-memset_single_step_event(unsigned int version, unsigned int type, unsigned int enable)
+//wrap the memset event creation because go has problems with fields in structs and go 1.6 restricts
+//go pointers being passed to c
+
+uint64_t
+memset_single_step_event(vmi_instance_t vmi,unsigned int version, unsigned int type, unsigned int enable)
 {
   vmi_event_t single_event;
+
+  memset(&single_event, 0, sizeof(vmi_event_t));
   single_event.version = version;
   single_event.type = type;
+  single_event.callback = generic_event_handler;
   single_event.ss_event.enable = enable;
-}
-void
-SET_VCPU_SINGLESTEP_HELPER(vmi_event_t event, uint cpu)
-{
-  SET_VCPU_SINGLESTEP(event.ss_event,cpu);
-}
+  SET_VCPU_SINGLESTEP(single_event.ss_event,0);
 
+  //register it
+  vmi_register_event(vmi,&single_event);
+
+  uint64_t id = (uintptr_t)&single_event;
+
+  return id;
+}
 */
 import "C"
 
@@ -74,29 +81,29 @@ func (e *Libvmi_Event) setEvent(event *C.vmi_event_t){
 * https://github.com/golang/go/wiki/cgo#function-variables
 */
 var mu sync.Mutex
-var fns = make(map[*C.vmi_event_t]Libvmi_Event)
+var fns = make(map[C.uint64_t]Libvmi_Event)
 
 /*
 * Register the go callback function in the Libvmi_Event wrapper by using
 * the address of the event since libvmi uses the same event struct as a parameter
 * to the generic callback function
 */
-func register(event *C.vmi_event_t, callback_wrapper Libvmi_Event) {
+func register(id C.uint64_t, callback_wrapper Libvmi_Event) {
     mu.Lock()
     defer mu.Unlock()
-    fns[event] = callback_wrapper
+    fns[id] = callback_wrapper
 }
 
-func lookup(event *C.vmi_event_t) Libvmi_Event {
+func lookup(id C.uint64_t) Libvmi_Event {
     mu.Lock()
     defer mu.Unlock()
-    return fns[event]
+    return fns[id]
 }
 
-func unregister(event *C.vmi_event_t) {
+func unregister(id C.uint64_t) {
     mu.Lock()
     defer mu.Unlock()
-    delete(fns, event)
+    delete(fns, id)
 }
 
 
@@ -111,14 +118,13 @@ func Vmi_register_event(vmi Libvmi, event Libvmi_Event){
     if event.EnableSingleStepEvent == true{
       enable = 1
     }
-    e := C.memset_single_step_event(C.uint(event.Version),C.uint(event.Type),C.uint(enable))
-    event.event = &e
 
-    //TODO: Is this optional?
-    C.SET_VCPU_SINGLESTEP_HELPER(e,0)
+    id := C.memset_single_step_event(vmi.vmi,C.uint(event.Version),C.uint(event.Type),C.uint(enable))
+    //register the struct address so we can lookup the callback in the map later
+    register(id,event)
+
   default:
-    fmt.Println("Unknown event")
+    fmt.Println("Unknown event type")
     return;
   }
-  C.vmi_register_event(vmi.vmi,event.event)
 }
